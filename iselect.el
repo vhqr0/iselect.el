@@ -24,6 +24,9 @@
 ;; - `iselect-company' inserts a company candidate, to be bound in
 ;;   `company-active-map'.
 ;; - `iselect-kill-ring' moves a kill to the front of the kill ring.
+;; - `iselect-history' replaces the input of the minibuffer, Comint or
+;;   Eshell with one of its history.  More modes, such as the REPL of
+;;   CIDER, can be added to `iselect-history-alist'.
 ;; - `iselect-files' switches to a buffer, opens a known project in
 ;;   Dired, jumps to a bookmark, or opens a recent file.
 ;; - `iselect-project-files' switches to a buffer or opens a file of
@@ -497,6 +500,96 @@ To be bound in `company-active-map'."
                                   :buffer "*iselect-kill-ring*")))
     (setq kill-ring (delete (cdr kill) kill-ring))
     (kill-new (cdr kill))))
+
+;;; history
+
+;; The REPLs of SLY and Geiser are derived from `comint-mode'.  For the
+;; REPL of CIDER:
+;;
+;;   (add-to-list 'iselect-history-alist
+;;                '(cider-repl-mode cider-repl-input-history
+;;                                  cider-repl-input-history-position
+;;                                  cider-repl-input-start-mark))
+
+(defcustom iselect-history-alist
+  '((eshell-mode eshell-history-ring eshell-history-index beginning-of-line)
+    (comint-mode comint-input-ring comint-input-ring-index comint-bol))
+  "Alist of the histories of modes for `iselect-history'.
+Each element is (MODE HISTORY INDEX BOL).  HISTORY is a variable of a
+list or a ring of the inputs, the latest first.  INDEX, if non-nil, is
+a variable set to the index of the input selected in HISTORY.  BOL is a
+function moving point to the beginning of the input, or a variable of
+a marker at it.  The first element whose MODE the current mode derives
+from is used."
+  :type '(alist :key-type symbol
+                :value-type (list (variable :tag "History")
+                                  (choice (const :tag "No index" nil)
+                                          (variable :tag "Index"))
+                                  (choice (function :tag "Function")
+                                          (variable :tag "Marker"))))
+  :group 'iselect)
+
+(defcustom iselect-history-limit 200
+  "Maximum number of the matches of `iselect-history'."
+  :type '(choice (const :tag "No limit" nil) natnum)
+  :group 'iselect)
+
+(declare-function ring-elements "ring")
+
+(defun iselect--history ()
+  "Return (HISTORY INDEX BEG END) of the current buffer.
+HISTORY is a list or a ring, and INDEX is as in `iselect-history-alist'.
+The input is between BEG and END."
+  (if (minibufferp)
+      (progn
+        (when (eq minibuffer-history-variable t)
+          (user-error "No history"))
+        (list (symbol-value minibuffer-history-variable)
+              nil (minibuffer-prompt-end) (point-max)))
+    (pcase (seq-find (lambda (entry)
+                       (and (derived-mode-p (car entry))
+                            (boundp (nth 1 entry))))
+                     iselect-history-alist)
+      ('nil (user-error "No history of %s" major-mode))
+      (`(,_ ,history ,index ,bol)
+       (save-excursion
+         (if (functionp bol)
+             (funcall bol)
+           (goto-char (symbol-value bol)))
+         (list (symbol-value history) index (point) (pos-eol)))))))
+
+(defun iselect-history ()
+  "Replace the input with a selected one of the history.
+In the minibuffer, the history is of `minibuffer-history-variable'.
+Otherwise, it is of the current mode in `iselect-history-alist'."
+  (interactive)
+  (pcase-let* ((`(,history ,index ,beg ,end) (iselect--history))
+               (history (if (ring-p history) (ring-elements history) history))
+               (buffer (current-buffer))
+               ;; The process output may move the input while reading.
+               (beg (copy-marker beg))
+               (end (copy-marker end t)))
+    (unless history
+      (user-error "No history"))
+    (when-let* ((candidate (let ((enable-recursive-minibuffers t))
+                             (iselect-read "History: "
+                                           (mapcar (lambda (input)
+                                                     (cons (substring-no-properties input)
+                                                           input))
+                                                   (delete-dups (copy-sequence history)))
+                                           :initial-input (regexp-quote
+                                                           (buffer-substring-no-properties
+                                                            beg end))
+                                           :limit iselect-history-limit
+                                           :history t
+                                           :buffer "*iselect-history*"))))
+      ;; Selecting the frames of iselect may change the current buffer.
+      (with-current-buffer buffer
+        (delete-region beg end)
+        (goto-char beg)
+        (insert (substring-no-properties (cdr candidate)))
+        (when index
+          (set index (seq-position history (cdr candidate))))))))
 
 ;;; files
 
