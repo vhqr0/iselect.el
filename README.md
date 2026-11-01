@@ -5,7 +5,7 @@ Select from candidates incrementally, like helm.
 ## iselect-read
 
 `(iselect-read PROMPT CANDIDATES &key initial-input history input-fn limit
-idle layout buffer)` reads a candidate in the minibuffer, and shows the
+delay layout buffer)` reads a candidate in the minibuffer, and shows the
 candidates matching the input in a child frame, or a new frame on text
 terminals.
 
@@ -15,8 +15,9 @@ terminals.
   `case-fold-search`.
 - LIMIT, if non-nil, is the maximum number of matches.  Filtering stops at
   it, which keeps large CANDIDATES fast.
-- IDLE is how to update the matches automatically: if positive, the idle
-  seconds to wait; if 0 or nil, after each command; if negative, never.
+- DELAY is how to update the matches automatically: if positive, the
+  seconds to wait after the last command; if 0 or nil, after each command;
+  if negative, never.
 - LAYOUT is `child-frame` or `frame`, `iselect-layout` by default, or nil
   not to show the candidates.
 - BUFFER is the buffer of the candidates or its name, `*iselect*` by

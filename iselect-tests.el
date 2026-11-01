@@ -28,7 +28,7 @@
         (condition-case nil
             (apply #'iselect-read "> " iselect-test-candidates
                    `(,@iselect-test--args
-                     :layout nil :buffer ,iselect-test-buffer :idle -1))
+                     :layout nil :buffer ,iselect-test-buffer :delay -1))
           (quit 'quit)
           (user-error 'user-error))))
 
@@ -37,7 +37,7 @@
 (defun iselect-test (keys &rest args)
   "Call `iselect-read' on the test candidates with KEYS as input.
 ARGS are passed to `iselect-read'.  The candidates are updated only by
-`iselect-update', unless ARGS has `:idle'.  Return `quit' on quit, and
+`iselect-update', unless ARGS has `:delay'.  Return `quit' on quit, and
 `user-error' on user errors.  The buffer of the candidates is kept in
 `iselect-test-buffer' until the next call."
   (when (buffer-live-p iselect-test-buffer)
@@ -127,15 +127,15 @@ ARGS are passed to `iselect-read'.  The candidates are updated only by
       (should (equal (get-text-property 2 'display) "^J")))))
 
 (ert-deftest iselect-test-auto-update ()
-  (should (equal (iselect-test "q RET" :idle 0) '("qux" . 3)))
-  (should (equal (iselect-test "f o o C-n RET" :idle nil) '("Foo baz" . 2))))
+  (should (equal (iselect-test "q RET" :delay 0) '("qux" . 3)))
+  (should (equal (iselect-test "f o o C-n RET" :delay nil) '("Foo baz" . 2))))
 
 (ert-deftest iselect-test-suspend ()
   (should (equal (iselect-test "C-c C-s q C-c C-s RET") '("qux" . 3)))
-  (should (equal (iselect-test "q C-c C-s DEL b a C-c C-s RET" :idle 0) '("foo bar" . 1)))
-  (should (equal (iselect-test "C-c C-s q RET" :idle 0) '("foo bar" . 1)))
+  (should (equal (iselect-test "q C-c C-s DEL b a C-c C-s RET" :delay 0) '("foo bar" . 1)))
+  (should (equal (iselect-test "C-c C-s q RET" :delay 0) '("foo bar" . 1)))
   (should (equal (iselect-test "C-c C-s q C-c C-u RET") '("qux" . 3)))
-  (iselect-test "C-c C-s q C-g" :idle 0)
+  (iselect-test "C-c C-s q C-g" :delay 0)
   (with-current-buffer iselect-test-buffer
     (should (equal (count-lines (point-min) (point-max)) 3))))
 

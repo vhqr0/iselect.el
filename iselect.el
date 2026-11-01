@@ -219,11 +219,13 @@ Unlike updating automatically, it is not suspended by
       (with-current-buffer iselect--buffer
         (run-hooks 'iselect-update-hook)))))
 
-(defun iselect--auto-update ()
-  "Update the candidates unless suspended.
+(defun iselect--auto-update (minibuffer)
+  "Update the candidates of MINIBUFFER unless suspended.
 Run by the hook or timer updating them automatically."
-  (unless iselect--suspend-p
-    (iselect-update)))
+  (when (buffer-live-p minibuffer)
+    (with-current-buffer minibuffer
+      (unless iselect--suspend-p
+        (iselect-update)))))
 
 (defun iselect-toggle-suspend ()
   "Toggle suspending updating the candidates automatically.
@@ -341,7 +343,7 @@ candidates."
   (setq truncate-lines t))
 
 (cl-defun iselect-read (prompt candidates &key initial-input history
-                               input-fn limit idle (layout iselect-layout)
+                               input-fn limit delay (layout iselect-layout)
                                buffer)
   "Read a candidate of CANDIDATES with PROMPT, and return it.
 
@@ -350,8 +352,8 @@ by the regexp converted from the input by `iselect-regexp-function',
 ignoring case as `case-fold-search'.  LIMIT, if non-nil, is the maximum
 number of the matches.
 
-\\<iselect-minibuffer-map>IDLE is how to update the matches automatically: if positive, the
-idle seconds to wait before updating; if 0 or nil, after each command;
+\\<iselect-minibuffer-map>DELAY is how to update the matches automatically: if positive, the
+seconds to wait after the last command; if 0 or nil, after each command;
 if negative, never.  \\[iselect-update] updates them at once, and \\[iselect-toggle-suspend]
 suspends updating them automatically.
 
@@ -368,7 +370,7 @@ kept after exiting, to be viewed.
 INITIAL-INPUT and HISTORY are as in `read-from-minibuffer'.  The input
 is added to HISTORY on exiting by \\[iselect-exit] or \\[iselect-exit-input]."
   (let ((buffer (get-buffer-create (or buffer "*iselect*")))
-        (idle (or idle 0))
+        (delay (or delay 0))
         minibuffer undo-layout timer)
     (with-current-buffer buffer
       (iselect-buffer-mode))
@@ -376,12 +378,6 @@ is added to HISTORY on exiting by \\[iselect-exit] or \\[iselect-exit-input]."
                (progn
                  (when layout
                    (setq undo-layout (iselect--show layout buffer)))
-                 (when (plusp idle)
-                   (setq timer (run-with-idle-timer
-                                idle t (lambda ()
-                                         (when (buffer-live-p minibuffer)
-                                           (with-current-buffer minibuffer
-                                             (iselect--auto-update)))))))
                  ;; The commands exiting normally throw the result.
                  ;; Exiting without throwing, such as by
                  ;; `exit-recursive-edit', is abnormal, and returns nil.
@@ -392,8 +388,20 @@ is added to HISTORY on exiting by \\[iselect-exit] or \\[iselect-exit-input]."
                                iselect--buffer buffer
                                iselect--candidates candidates
                                iselect--limit limit)
-                         (when (zerop idle)
-                           (add-hook 'post-command-hook #'iselect--auto-update nil t))
+                         ;; If DELAY is positive, update by a timer
+                         ;; replacing the one of the last command.
+                         (unless (minusp delay)
+                           (add-hook 'post-command-hook
+                                     (lambda ()
+                                       (if (plusp delay)
+                                           (progn
+                                             (when timer
+                                               (cancel-timer timer))
+                                             (setq timer (run-with-timer
+                                                          delay nil #'iselect--auto-update
+                                                          minibuffer)))
+                                         (iselect--auto-update minibuffer)))
+                                     nil t))
                          (iselect-update))
                      (read-from-minibuffer
                       prompt initial-input iselect-minibuffer-map nil history))
