@@ -40,7 +40,6 @@ In the minibuffer:
   maps of `completing-read`.
 - `iselect-company` inserts a company candidate, to be bound in
   `company-active-map`.
-- `iselect-kill-ring` moves a kill to the front of the kill ring.
 - `iselect-history` replaces the input of the minibuffer, Comint or Eshell
   with one of its history.  More modes can be added to
   `iselect-history-alist`.

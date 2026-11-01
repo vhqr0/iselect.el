@@ -23,7 +23,6 @@
 ;;   the maps of `completing-read', such as `icomplete-minibuffer-map'.
 ;; - `iselect-company' inserts a company candidate, to be bound in
 ;;   `company-active-map'.
-;; - `iselect-kill-ring' moves a kill to the front of the kill ring.
 ;; - `iselect-history' replaces the input of the minibuffer, Comint or
 ;;   Eshell with one of its history.  More modes, such as the REPL of
 ;;   CIDER, can be added to `iselect-history-alist'.
@@ -483,31 +482,6 @@ To be bound in `company-active-map'."
         ;; Selecting the frames of iselect may change the current buffer.
         (with-current-buffer buffer
           (company-finish (cdr candidate)))))))
-
-;;; kill ring
-
-(defcustom iselect-kill-ring-width 200
-  "Maximum number of characters shown of a kill."
-  :type 'natnum
-  :group 'iselect)
-
-(defvar iselect-kill-ring-history nil
-  "History of the inputs of `iselect-kill-ring'.")
-
-(defun iselect-kill-ring ()
-  "Move a selected kill to the front of the kill ring, to be yanked."
-  (interactive)
-  (when-let* ((kill (iselect-read "Kill: "
-                                  (mapcar (lambda (kill)
-                                            (cons (substring-no-properties
-                                                   kill 0 (min (length kill)
-                                                               iselect-kill-ring-width))
-                                                  kill))
-                                          kill-ring)
-                                  :history 'iselect-kill-ring-history
-                                  :buffer "*iselect-kill-ring*")))
-    (setq kill-ring (delete (cdr kill) kill-ring))
-    (kill-new (cdr kill))))
 
 ;;; history
 
