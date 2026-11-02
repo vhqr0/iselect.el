@@ -15,9 +15,9 @@ terminals.
   `case-fold-search`.
 - LIMIT, if non-nil, is the maximum number of matches.  Filtering stops at
   it, which keeps large CANDIDATES fast.
-- DELAY is how to update the matches automatically: if positive, the
-  seconds to wait after the last command; if 0 or nil, after each command;
-  if negative, never.
+- DELAY is the seconds to wait after the last command before updating the
+  matches automatically, `iselect-delay` (0.2) by default.  If negative,
+  they are not updated automatically.
 - LAYOUT is `child-frame` or `frame`, `iselect-layout` by default, or nil
   not to show the candidates.
 - BUFFER is the buffer of the candidates or its name, `*iselect*` by

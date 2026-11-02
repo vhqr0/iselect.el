@@ -37,7 +37,8 @@
 (defun iselect-test (keys &rest args)
   "Call `iselect-read' on the test candidates with KEYS as input.
 ARGS are passed to `iselect-read'.  The candidates are updated only by
-`iselect-update', unless ARGS has `:delay'.  Return `quit' on quit, and
+`iselect-update', unless ARGS has `:delay', and then at once, as the
+timers do not run in keyboard macros.  Return `quit' on quit, and
 `user-error' on user errors.  The buffer of the candidates is kept in
 `iselect-test-buffer' until the next call."
   (when (buffer-live-p iselect-test-buffer)
@@ -46,7 +47,11 @@ ARGS are passed to `iselect-read'.  The candidates are updated only by
         iselect-test--result nil
         iselect-test-buffer (generate-new-buffer " *iselect-test*"))
   ;; The minibuffer reads from stdin in batch unless in a keyboard macro.
-  (execute-kbd-macro (key-parse (concat "<f12> " keys)))
+  (cl-letf (((symbol-function 'run-with-timer)
+             (lambda (_secs _repeat function &rest args)
+               (apply function args)
+               nil)))
+    (execute-kbd-macro (key-parse (concat "<f12> " keys))))
   iselect-test--result)
 
 (defun iselect-test-filter (input &optional limit)
@@ -128,7 +133,7 @@ ARGS are passed to `iselect-read'.  The candidates are updated only by
 
 (ert-deftest iselect-test-auto-update ()
   (should (equal (iselect-test "q RET" :delay 0) '("qux" . 3)))
-  (should (equal (iselect-test "f o o C-n RET" :delay nil) '("Foo baz" . 2))))
+  (should (equal (iselect-test "f o o C-n RET" :delay 0.2) '("Foo baz" . 2))))
 
 (ert-deftest iselect-test-suspend ()
   (should (equal (iselect-test "C-c C-s q C-c C-s RET") '("qux" . 3)))
