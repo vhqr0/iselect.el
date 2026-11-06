@@ -11,8 +11,8 @@ terminals.
 
 - CANDIDATES is a list of `(STRING . DATA)`.  STRING is shown and matched.
 - The input is a regexp, but spaces match any string, as `.*`.  It is
-  converted by `iselect-regexp-function`, and matches ignoring case as
-  `case-fold-search`.
+  converted by `iselect-regexp-function`, and matches ignoring case unless
+  it has an upper case letter, as isearch and occur.
 - LIMIT, if non-nil, is the maximum number of matches.  Filtering stops at
   it, which keeps large CANDIDATES fast.
 - DELAY is the seconds to wait after the last command before updating the

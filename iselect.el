@@ -85,14 +85,21 @@ INPUT is a regexp, but spaces match any string."
   "Function converting the input to the regexp matching the candidates."
   :type 'function)
 
+(defun iselect--case-fold (regexp)
+  "Return `case-fold-search' for REGEXP, as isearch and occur do."
+  (if (and case-fold-search search-upper-case)
+      (isearch-no-upper-case-p regexp t)
+    case-fold-search))
+
 (defun iselect--filter (input candidates limit)
   "Return the matches of INPUT in CANDIDATES, at most LIMIT if non-nil.
 INPUT is converted to a regexp by `iselect-regexp-function'.  A match is
 \(HIGHLIGHTED . CANDIDATE), HIGHLIGHTED being a copy of the string of
 CANDIDATE with the matched part highlighted.  Signal `invalid-regexp'
 if the regexp is invalid."
-  (let ((regexp (funcall iselect-regexp-function input))
-        matches)
+  (let* ((regexp (funcall iselect-regexp-function input))
+         (case-fold-search (iselect--case-fold regexp))
+         matches)
     (while (and candidates (or (null limit) (plusp limit)))
       (let ((candidate (pop candidates)))
         (when (string-match regexp (car candidate))
@@ -353,7 +360,8 @@ candidates."
 
 CANDIDATES is a list of (STRING . DATA).  STRING is shown, and matched
 by the regexp converted from the input by `iselect-regexp-function',
-ignoring case as `case-fold-search'.  LIMIT, if non-nil, is the maximum
+ignoring case unless it has an upper case letter, as isearch and occur.
+LIMIT, if non-nil, is the maximum
 number of the matches.
 
 \\<iselect-minibuffer-map>DELAY is the seconds to wait after the last command before updating

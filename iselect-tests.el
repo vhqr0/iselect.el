@@ -61,7 +61,9 @@ timers do not run in keyboard macros.  Return `quit' on quit, and
 (ert-deftest iselect-test-filter ()
   (should (equal (iselect-test-filter "") '(1 2 3)))
   (should (equal (iselect-test-filter "foo") '(1 2)))
-  (should (equal (iselect-test-filter "Foo") '(1 2)))
+  ;; Not ignoring case with an upper case letter.
+  (should (equal (iselect-test-filter "Foo") '(2)))
+  (should (equal (iselect-test-filter "o\\Wb") '(1 2)))
   (let ((case-fold-search nil))
     (should (equal (iselect-test-filter "foo") '(1)))
     (should (equal (iselect-test-filter "Foo") '(2))))
